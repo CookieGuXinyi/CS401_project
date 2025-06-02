@@ -9,7 +9,12 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
 )
 
-find_package(OpenCV REQUIRED)
+# 强制使用系统的OpenCV
+set(OpenCV_DIR /usr/lib/x86_64-linux-gnu/cmake/opencv4)
+find_package(OpenCV 4.2 REQUIRED)
+
+# 设置环境变量以使用系统的库
+set(ENV{LD_LIBRARY_PATH} "/usr/lib/x86_64-linux-gnu:$ENV{LD_LIBRARY_PATH}")
 
 catkin_package(
   INCLUDE_DIRS include
