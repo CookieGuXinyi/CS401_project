@@ -2,6 +2,8 @@
 <launch>
     <!-- 启动摄像头 -->
     <include file="$(find astra_camera)/launch/dabai_u3.launch"/>
+    <!-- 启动limo小车的摄像头 -->
+    <!-- <include file="$(find limo_camera)/launch/limo_camera.launch"/> -->
     
     <!-- 启动检测节点 -->
     <node name="detector_try" pkg="detector_try" type="detector_node" output="screen">

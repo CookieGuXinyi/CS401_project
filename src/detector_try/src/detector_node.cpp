@@ -11,7 +11,7 @@ TrafficDetector::TrafficDetector(ros::NodeHandle& nh) : nh_(nh) {
     // 从参数服务器读取参数
     nh_.param("cross_threshold", cross_threshold, 0.7);
     nh_.param("circle_threshold", circle_threshold, 0.7);
-    nh_.param("light_threshold", light_threshold, 200);
+    nh_.param("light_threshold", light_threshold, 200.0);
     nh_.param("min_contour_area", min_contour_area, 100);
 }
 
@@ -34,6 +34,21 @@ void TrafficDetector::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
         light_pub_.publish(light_msg);
         
         // 可视化结果
+        cv::Mat gray;
+        cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+        
+        // 分离颜色通道
+        std::vector<cv::Mat> channels;
+        cv::split(image, channels);
+        
+        cv::Mat red_channel = channels[2] - channels[1];
+        cv::Mat yellow_channel = channels[1] - channels[0];
+        
+        // 二值化
+        cv::Mat red_binary, yellow_binary;
+        cv::threshold(red_channel, red_binary, 50, 255, cv::THRESH_BINARY);
+        cv::threshold(yellow_channel, yellow_binary, 50, 255, cv::THRESH_BINARY);
+        
         std::vector<std::vector<cv::Point>> red_contours, yellow_contours;
         detect_traffic_binary(red_binary, gray, red_contours);
         detect_traffic_binary(yellow_binary, gray, yellow_contours);

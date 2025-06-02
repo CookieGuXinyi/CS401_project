@@ -1,13 +1,10 @@
 <?xml version="1.0"?>
 <launch>
     <!-- 启动视频流节点 -->
-    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen">
-        <param name="video_device" value="$(arg video_path)"/>
-        <param name="image_width" value="640"/>
-        <param name="image_height" value="480"/>
-        <param name="pixel_format" value="yuyv"/>
-        <param name="camera_frame_id" value="usb_cam"/>
-        <param name="io_method" value="mmap"/>
+    <node name="video_publisher" pkg="detector_try" type="video_publisher.py" output="screen">
+        <param name="video_path" value="$(arg video_path)"/>
+        <param name="loop" value="true"/>
+        <param name="rate" value="1.0"/>
     </node>
 
     <!-- 启动检测节点 -->

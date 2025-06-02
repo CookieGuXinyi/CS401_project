@@ -1,92 +1,88 @@
 #!/usr/bin/env python3
-
+import rospy
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 import cv2
-import os
 import time
-from datetime import datetime
+import os
 
-def record_video(output_path, duration=10, fps=30):
-    """录制测试视频
-    
-    Args:
-        output_path: 输出视频路径
-        duration: 录制时长（秒）
-        fps: 帧率
-    """
-    # 创建输出目录
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    # 打开摄像头
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("错误：无法打开摄像头")
-        return
+class VideoRecorder:
+    def __init__(self):
+        rospy.init_node('video_recorder', anonymous=True)
         
-    # 设置摄像头分辨率
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # 初始化订阅者
+        self.image_sub = rospy.Subscriber('/detector_try/processed_image', Image, self.image_callback)
+        
+        # 初始化变量
+        self.bridge = CvBridge()
+        self.recording = False
+        self.video_writer = None
+        
+        # 创建保存目录
+        self.save_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'test_videos')
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+        
+        rospy.loginfo("视频录制器已初始化")
+        rospy.loginfo("按 'r' 开始/停止录制")
+        rospy.loginfo("按 'q' 退出")
     
-    # 创建视频写入器
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (640, 480))
-    
-    print(f"开始录制视频，时长 {duration} 秒...")
-    start_time = time.time()
-    
-    while (time.time() - start_time) < duration:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    def image_callback(self, msg):
+        try:
+            # 转换ROS图像消息为OpenCV格式
+            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             
-        # 显示录制时间
-        elapsed = time.time() - start_time
-        cv2.putText(frame, f"Recording: {elapsed:.1f}s", (10, 30),
-                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        
-        # 写入帧
-        out.write(frame)
-        
-        # 显示预览
-        cv2.imshow('Recording', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            # 显示图像
+            cv2.imshow('Recording', cv_image)
             
-    # 释放资源
-    cap.release()
-    out.release()
-    cv2.destroyAllWindows()
+            # 处理键盘输入
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('r'):
+                self.toggle_recording()
+            elif key == ord('q'):
+                self.stop_recording()
+                rospy.signal_shutdown('User requested shutdown')
+            
+            # 如果正在录制，写入视频
+            if self.recording and self.video_writer is not None:
+                self.video_writer.write(cv_image)
+                
+        except Exception as e:
+            rospy.logerr(f"图像处理错误: {str(e)}")
     
-    print(f"视频已保存到: {output_path}")
+    def toggle_recording(self):
+        if not self.recording:
+            # 开始录制
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = os.path.join(self.save_dir, f'test_video_{timestamp}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            self.video_writer = cv2.VideoWriter(filename, fourcc, 20.0, (640, 480))
+            self.recording = True
+            rospy.loginfo(f"开始录制视频: {filename}")
+        else:
+            # 停止录制
+            self.stop_recording()
+    
+    def stop_recording(self):
+        if self.recording:
+            if self.video_writer is not None:
+                self.video_writer.release()
+                self.video_writer = None
+            self.recording = False
+            rospy.loginfo("停止录制视频")
+    
+    def cleanup(self):
+        self.stop_recording()
+        cv2.destroyAllWindows()
 
 def main():
-    # 创建测试视频目录
-    test_videos_dir = os.path.join(os.path.dirname(__file__), "..", "test_videos")
-    os.makedirs(test_videos_dir, exist_ok=True)
-    
-    # 录制不同类型的测试视频
-    test_cases = [
-        ("crosswalk_front.mp4", "正面视角的斑马线"),
-        ("crosswalk_side.mp4", "侧面视角的斑马线"),
-        ("traffic_light_red.mp4", "红灯"),
-        ("traffic_light_yellow.mp4", "黄灯"),
-        ("traffic_light_green.mp4", "绿灯"),
-        ("red_light_crosswalk.mp4", "红灯和斑马线")
-    ]
-    
-    for filename, description in test_cases:
-        print(f"\n准备录制: {description}")
-        print("按回车键开始录制...")
-        input()
-        
-        output_path = os.path.join(test_videos_dir, filename)
-        record_video(output_path)
-        
-        print("\n录制完成！")
-        print("1. 继续录制下一个视频")
-        print("2. 退出")
-        choice = input("请选择 (1/2): ")
-        if choice != "1":
-            break
+    recorder = VideoRecorder()
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        recorder.cleanup()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main() 
