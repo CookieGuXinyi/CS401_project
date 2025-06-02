@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- 启动视频流节点 -->
+    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="$(arg video_path)"/>
+        <param name="image_width" value="640"/>
+        <param name="image_height" value="480"/>
+        <param name="pixel_format" value="yuyv"/>
+        <param name="camera_frame_id" value="usb_cam"/>
+        <param name="io_method" value="mmap"/>
+    </node>
+
+    <!-- 启动检测节点 -->
+    <node name="detector_try" pkg="detector_try" type="detector_node" output="screen">
+        <param name="cross_threshold" value="0.7"/>
+        <param name="circle_threshold" value="0.7"/>
+        <param name="light_threshold" value="200"/>
+        <param name="min_contour_area" value="100"/>
+    </node>
+    
+    <!-- 启动可视化节点 -->
+    <node name="image_view" pkg="image_view" type="image_view">
+        <remap from="image" to="/detector_try/processed_image"/>
+    </node>
+</launch> 

@@ -1,0 +1,13 @@
+{
+    "test_cases": [
+        {
+            "name": "测试视频_斑马线",
+            "video_path": "test_videos/155323.mp4",
+            "expected_results": {
+                "cross": true,
+                "light": 2
+            },
+            "description": "有斑马线"
+        }
+    ]
+} 
